@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Hide from Dock; app lives exclusively in the menu bar -->
+    <key>LSUIElement</key>
+    <true/>
+    <key>CFBundleName</key>
+    <string>Tempo</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.tempo.app</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>CFBundleExecutable</key>
+    <string>Tempo</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSSupportsAutomaticTermination</key>
+    <false/>
+    <key>NSApplicationSupportsSecureRestorableState</key>
+    <true/>
+</dict>
+</plist>
