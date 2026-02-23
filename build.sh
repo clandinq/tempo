@@ -52,5 +52,17 @@ cp "$RESOURCES/Info.plist" "$APP/Contents/"
 echo ""
 echo "Build succeeded: $APP"
 echo ""
-echo "To run:  open '$APP'"
-echo "Or:      '$APP/Contents/MacOS/Tempo'"
+
+# Install to /Applications if --install flag is passed
+if [[ "${1:-}" == "--install" ]]; then
+    DEST="/Applications/Tempo.app"
+    echo "Installing to $DEST ..."
+    rm -rf "$DEST"
+    cp -r "$APP" "$DEST"
+    # Remove quarantine flag so Gatekeeper doesn't block unsigned binary
+    xattr -dr com.apple.quarantine "$DEST" 2>/dev/null || true
+    echo "Installed. Launch from Spotlight or: open '$DEST'"
+else
+    echo "To run:    open '$APP'"
+    echo "To install: $0 --install"
+fi
