@@ -11,11 +11,12 @@ enum Period: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-// MARK: - ProjectStat helper
+// MARK: - ProjectStat
 
 struct ProjectStat: Identifiable {
     let id: UUID
     let name: String
+    let color: ProjectColor
     let seconds: TimeInterval
 
     var hours: Double { seconds / 3600 }
@@ -38,6 +39,7 @@ struct InsightsView: View {
             ProjectStat(
                 id: project.id,
                 name: project.name,
+                color: project.color,
                 seconds: store.totalTime(for: project.id, in: range)
             )
         }
@@ -115,7 +117,8 @@ struct InsightsView: View {
                     x: .value("Hours", stat.hours),
                     y: .value("Project", stat.name)
                 )
-                .foregroundStyle(by: .value("Project", stat.name))
+                // Each bar uses the project's own chosen color
+                .foregroundStyle(stat.color.color)
                 .cornerRadius(5)
                 .annotation(position: .trailing, alignment: .leading) {
                     Text(Formatters.shortDuration(stat.seconds))
@@ -159,7 +162,6 @@ struct InsightsView: View {
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
 
             VStack(spacing: 0) {
-                // Header
                 HStack {
                     Text("Project")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -181,7 +183,7 @@ struct InsightsView: View {
                 ForEach(Array(stats.enumerated()), id: \.element.id) { idx, stat in
                     HStack {
                         Circle()
-                            .fill(chartColor(for: idx))
+                            .fill(stat.color.color)
                             .frame(width: 8, height: 8)
                         Text(stat.name)
                             .font(.system(size: 13, design: .rounded))
@@ -212,19 +214,5 @@ struct InsightsView: View {
         guard totalSeconds > 0 else { return "0%" }
         let pct = (stat.seconds / totalSeconds) * 100
         return String(format: "%.0f%%", pct)
-    }
-
-    /// Returns the same color palette that Charts uses for sequential series,
-    /// matched by index so the dot and bar colors stay in sync.
-    private func chartColor(for index: Int) -> Color {
-        let palette: [Color] = [
-            Color(red: 0.35, green: 0.60, blue: 0.95),
-            Color(red: 0.95, green: 0.55, blue: 0.30),
-            Color(red: 0.45, green: 0.80, blue: 0.60),
-            Color(red: 0.85, green: 0.40, blue: 0.70),
-            Color(red: 0.95, green: 0.80, blue: 0.25),
-            Color(red: 0.50, green: 0.75, blue: 0.90),
-        ]
-        return palette[index % palette.count]
     }
 }

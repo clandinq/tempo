@@ -50,8 +50,8 @@ final class TimeStore: ObservableObject {
 
     // MARK: Project CRUD
 
-    func addProject(name: String) {
-        let project = Project(name: name)
+    func addProject(name: String, color: ProjectColor = .blue) {
+        let project = Project(name: name, color: color)
         projects.append(project)
         save()
     }
@@ -59,6 +59,12 @@ final class TimeStore: ObservableObject {
     func renameProject(id: UUID, to name: String) {
         guard let idx = projects.firstIndex(where: { $0.id == id }) else { return }
         projects[idx].name = name
+        save()
+    }
+
+    func recolorProject(id: UUID, color: ProjectColor) {
+        guard let idx = projects.firstIndex(where: { $0.id == id }) else { return }
+        projects[idx].color = color
         save()
     }
 

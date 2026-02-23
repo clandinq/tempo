@@ -11,9 +11,6 @@ final class MenuBarController {
     private var statusItem: NSStatusItem!
     private var cancellables = Set<AnyCancellable>()
 
-    // Keep a reference so the window is not deallocated
-    private var insightsWindowController: NSWindowController?
-
     init(store: TimeStore) {
         self.store = store
         setupStatusItem()
@@ -74,7 +71,6 @@ final class MenuBarController {
 
         let today = store.todayRange()
 
-        // Project list
         if store.projects.isEmpty {
             let empty = NSMenuItem(title: "No projects yet", action: nil, keyEquivalent: "")
             empty.isEnabled = false
@@ -82,28 +78,27 @@ final class MenuBarController {
         } else {
             for project in store.projects {
                 let todaySeconds = store.totalTime(for: project.id, in: today)
-                let label: String
+                let suffix: String
                 if store.activeProjectId == project.id, store.isRunning {
                     let live = Formatters.elapsedClock(store.currentSessionElapsed)
                     let todayStr = Formatters.shortDuration(todaySeconds)
-                    label = "\(project.name)  \(live)  (today: \(todayStr))"
+                    suffix = "  \(live)  (today: \(todayStr))"
                 } else {
                     let todayStr = Formatters.shortDuration(todaySeconds)
-                    label = "\(project.name)  (today: \(todayStr))"
+                    suffix = "  (today: \(todayStr))"
                 }
 
-                let item = NSMenuItem(title: label, action: #selector(projectTapped(_:)), keyEquivalent: "")
+                let item = NSMenuItem(title: "", action: #selector(projectTapped(_:)), keyEquivalent: "")
                 item.target = self
                 item.representedObject = project.id
-                // Checkmark for active project
                 item.state = (store.activeProjectId == project.id) ? .on : .off
+                item.attributedTitle = coloredMenuTitle(project: project, suffix: suffix)
                 menu.addItem(item)
             }
         }
 
         menu.addItem(.separator())
 
-        // Stop
         let stopItem = NSMenuItem(title: "Stop", action: #selector(stopTapped), keyEquivalent: "")
         stopItem.target = self
         stopItem.isEnabled = store.isRunning
@@ -111,21 +106,46 @@ final class MenuBarController {
 
         menu.addItem(.separator())
 
-        // Manage projects
         let manageItem = NSMenuItem(title: "Manage Projects...", action: #selector(openManage), keyEquivalent: "")
         manageItem.target = self
         menu.addItem(manageItem)
 
-        // Insights
         let insightsItem = NSMenuItem(title: "Open Insights", action: #selector(openInsights), keyEquivalent: "i")
         insightsItem.target = self
         menu.addItem(insightsItem)
 
         menu.addItem(.separator())
 
-        // Quit
         let quitItem = NSMenuItem(title: "Quit Tempo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quitItem)
+    }
+
+    /// Builds an attributed string: colored bullet + project name + gray suffix.
+    private func coloredMenuTitle(project: Project, suffix: String) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+
+        // Colored dot using the project's color
+        let dot = NSAttributedString(string: "● ", attributes: [
+            .foregroundColor: project.color.nsColor,
+            .font: NSFont.menuFont(ofSize: 0)
+        ])
+        result.append(dot)
+
+        // Project name in normal menu color
+        let nameAttr = NSAttributedString(string: project.name, attributes: [
+            .foregroundColor: NSColor.labelColor,
+            .font: NSFont.menuFont(ofSize: 0)
+        ])
+        result.append(nameAttr)
+
+        // Suffix in secondary color
+        let suffixAttr = NSAttributedString(string: suffix, attributes: [
+            .foregroundColor: NSColor.secondaryLabelColor,
+            .font: NSFont.menuFont(ofSize: 0)
+        ])
+        result.append(suffixAttr)
+
+        return result
     }
 
     // MARK: Actions
@@ -164,7 +184,7 @@ final class MenuBarController {
         openOrFocusWindow(id: "manage") {
             let content = ManageProjectsView().environmentObject(self.store)
             let win = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 400, height: 460),
+                contentRect: NSRect(x: 0, y: 0, width: 420, height: 480),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false
@@ -179,7 +199,6 @@ final class MenuBarController {
 
     // MARK: Window helpers
 
-    /// Opens a window by logical id, or focuses it if already open.
     private var openWindows: [String: NSWindowController] = [:]
 
     private func openOrFocusWindow(id: String, makeWindow: () -> NSWindow) {
@@ -192,7 +211,6 @@ final class MenuBarController {
         let wc = NSWindowController(window: win)
         openWindows[id] = wc
 
-        // Clean up reference when window closes
         NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: win,
