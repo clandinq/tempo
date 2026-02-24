@@ -55,9 +55,10 @@ final class MenuBarController {
             button.title = "Tempo"
         }
 
-        // Use the custom logo; fall back to a system symbol if the bundle image is missing
+        // Use the custom logo; isTemplate=false preserves the original colors
         if let url = Bundle.main.url(forResource: "tempo_logo", withExtension: "png"),
            let img = NSImage(contentsOf: url) {
+            img.isTemplate = false
             img.size = NSSize(width: 18, height: 18)
             button.image = img
         } else {
