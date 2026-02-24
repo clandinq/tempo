@@ -13,6 +13,9 @@ final class TimeStore: ObservableObject {
     @Published private(set) var sessionStart: Date? = nil     // when the current run started
     @Published private(set) var entries: [TimeEntry] = []
 
+    let settings = AppSettings()
+    private let notifications = NotificationManager.shared
+
     // Fires every second so the menu bar elapsed label stays fresh
     private var tickTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -31,6 +34,7 @@ final class TimeStore: ObservableObject {
     init() {
         load()
         startTickTimer()
+        notifications.requestPermission()
     }
 
     // MARK: Timer management
@@ -80,7 +84,7 @@ final class TimeStore: ObservableObject {
 
     /// Start (or switch to) tracking a project.
     func startTracking(projectId: UUID) {
-        guard projects.contains(where: { $0.id == projectId }) else { return }
+        guard let project = projects.first(where: { $0.id == projectId }) else { return }
 
         // Flush any in-flight session for the previous project
         flushCurrentSession()
@@ -88,6 +92,13 @@ final class TimeStore: ObservableObject {
         activeProjectId = projectId
         sessionStart = Date()
         save()
+
+        // Cancel any pending "get back to work" reminder, schedule a break reminder
+        notifications.cancelResume()
+        notifications.scheduleBreak(
+            projectName: project.name,
+            in: TimeInterval(settings.breakReminderMinutes * 60)
+        )
     }
 
     /// Pause tracking without clearing the active project.
@@ -95,6 +106,10 @@ final class TimeStore: ObservableObject {
         flushCurrentSession()
         sessionStart = nil
         save()
+
+        // Cancel break reminder, schedule a "resume" nudge
+        notifications.cancelBreak()
+        notifications.scheduleResume(in: TimeInterval(settings.resumeReminderMinutes * 60))
     }
 
     /// True when the timer is actively counting.

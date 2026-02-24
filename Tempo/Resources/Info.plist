@@ -18,6 +18,8 @@
     <string>NSApplication</string>
     <key>CFBundleExecutable</key>
     <string>Tempo</string>
+    <key>CFBundleIconFile</key>
+    <string>tempo_logo</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSSupportsAutomaticTermination</key>

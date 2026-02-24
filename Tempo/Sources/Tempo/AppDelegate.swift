@@ -17,5 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // Flush any in-progress session to disk so no time is lost
         store.stop()
+        // Clear pending reminders so they don't fire after quit
+        NotificationManager.shared.cancelBreak()
+        NotificationManager.shared.cancelResume()
     }
 }

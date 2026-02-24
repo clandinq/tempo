@@ -54,7 +54,15 @@ final class MenuBarController {
         } else {
             button.title = "Tempo"
         }
-        button.image = NSImage(systemSymbolName: "clock", accessibilityDescription: "Tempo")
+
+        // Use the custom logo; fall back to a system symbol if the bundle image is missing
+        if let url = Bundle.main.url(forResource: "tempo_logo", withExtension: "png"),
+           let img = NSImage(contentsOf: url) {
+            img.size = NSSize(width: 18, height: 18)
+            button.image = img
+        } else {
+            button.image = NSImage(systemSymbolName: "clock", accessibilityDescription: "Tempo")
+        }
         button.imagePosition = .imageLeading
     }
 
@@ -113,6 +121,10 @@ final class MenuBarController {
         let insightsItem = NSMenuItem(title: "Open Insights", action: #selector(openInsights), keyEquivalent: "i")
         insightsItem.target = self
         menu.addItem(insightsItem)
+
+        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
 
         menu.addItem(.separator())
 
@@ -176,6 +188,23 @@ final class MenuBarController {
             win.center()
             win.contentView = NSHostingView(rootView: content)
             win.setFrameAutosaveName("InsightsWindow")
+            return win
+        }
+    }
+
+    @objc private func openSettings() {
+        openOrFocusWindow(id: "settings") {
+            let content = SettingsView(settings: self.store.settings)
+            let win = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 380, height: 200),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            win.title = "Tempo Settings"
+            win.center()
+            win.contentView = NSHostingView(rootView: content)
+            win.setFrameAutosaveName("SettingsWindow")
             return win
         }
     }

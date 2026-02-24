@@ -35,19 +35,24 @@ swiftc \
     -framework SwiftUI \
     -framework Charts \
     -framework Combine \
+    -framework UserNotifications \
     -O \
     "$SRC/Models.swift" \
     "$SRC/Formatters.swift" \
+    "$SRC/Settings.swift" \
+    "$SRC/NotificationManager.swift" \
     "$SRC/Store.swift" \
     "$SRC/InsightsView.swift" \
     "$SRC/ManageProjectsView.swift" \
+    "$SRC/SettingsView.swift" \
     "$SRC/MenuBarController.swift" \
     "$SRC/AppDelegate.swift" \
     "$SRC/main.swift" \
     -o "$APP/Contents/MacOS/Tempo"
 
-# Copy Info.plist
+# Copy Info.plist and assets
 cp "$RESOURCES/Info.plist" "$APP/Contents/"
+cp "$RESOURCES/tempo_logo.png" "$APP/Contents/Resources/"
 
 echo ""
 echo "Build succeeded: $APP"
