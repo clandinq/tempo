@@ -54,6 +54,7 @@ swiftc \
 # Copy Info.plist and assets
 cp "$RESOURCES/Info.plist" "$APP/Contents/"
 cp "$RESOURCES/tempo_logo.png" "$APP/Contents/Resources/"
+cp "$RESOURCES/AppIcon.icns" "$APP/Contents/Resources/"
 
 echo ""
 echo "Build succeeded: $APP"
