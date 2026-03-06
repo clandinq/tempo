@@ -123,6 +123,10 @@ final class MenuBarController {
         insightsItem.target = self
         menu.addItem(insightsItem)
 
+        let historyItem = NSMenuItem(title: "View History", action: #selector(openHistory), keyEquivalent: "h")
+        historyItem.target = self
+        menu.addItem(historyItem)
+
         let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
@@ -174,6 +178,23 @@ final class MenuBarController {
 
     @objc private func stopTapped() {
         store.stop()
+    }
+
+    @objc private func openHistory() {
+        openOrFocusWindow(id: "history") {
+            let content = HistoryView().environmentObject(self.store)
+            let win = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 680, height: 520),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            win.title = "Tempo History"
+            win.center()
+            win.contentView = NSHostingView(rootView: content)
+            win.setFrameAutosaveName("HistoryWindow")
+            return win
+        }
     }
 
     @objc private func openInsights() {

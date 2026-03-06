@@ -43,6 +43,7 @@ swiftc \
     "$SRC/NotificationManager.swift" \
     "$SRC/Store.swift" \
     "$SRC/InsightsView.swift" \
+    "$SRC/HistoryView.swift" \
     "$SRC/ManageProjectsView.swift" \
     "$SRC/SettingsView.swift" \
     "$SRC/MenuBarController.swift" \

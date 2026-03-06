@@ -72,6 +72,20 @@ final class TimeStore: ObservableObject {
         save()
     }
 
+    // MARK: Entry edits
+
+    func updateEntry(id: UUID, endDate: Date) {
+        guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
+        guard endDate > entries[idx].startDate else { return }
+        entries[idx].endDate = endDate
+        save()
+    }
+
+    func deleteEntry(id: UUID) {
+        entries.removeAll { $0.id == id }
+        save()
+    }
+
     func deleteProject(id: UUID) {
         // Stop tracking if this project is active
         if activeProjectId == id { stop() }
