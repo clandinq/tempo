@@ -186,7 +186,7 @@ struct EditEntrySheet: View {
 
     let entry: TimeEntry
 
-    // End date is the primary editable state; duration is kept in sync.
+    @State private var startDate: Date
     @State private var endDate: Date
     @State private var durationMinutes: Int
     // Separate text state so typing "120" doesn't flicker through intermediate values.
@@ -195,6 +195,7 @@ struct EditEntrySheet: View {
     init(entry: TimeEntry) {
         self.entry = entry
         let mins = max(1, Int(entry.duration / 60))
+        _startDate       = State(initialValue: entry.startDate)
         _endDate         = State(initialValue: entry.endDate)
         _durationMinutes = State(initialValue: mins)
         _durationText    = State(initialValue: "\(mins)")
@@ -202,20 +203,33 @@ struct EditEntrySheet: View {
 
     // MARK: Linked bindings
 
-    /// Changing the end date via DatePicker → recalculate and sync duration fields.
-    private var endDateBinding: Binding<Date> {
+    /// Changing start time → keep end fixed, recompute duration.
+    private var startDateBinding: Binding<Date> {
         Binding(
-            get: { endDate },
-            set: { newDate in
-                endDate = newDate
-                let mins = max(1, Int(newDate.timeIntervalSince(entry.startDate) / 60))
+            get: { startDate },
+            set: { newStart in
+                startDate = newStart
+                let mins = max(1, Int(endDate.timeIntervalSince(newStart) / 60))
                 durationMinutes = mins
                 durationText = "\(mins)"
             }
         )
     }
 
-    /// Changing duration via Stepper → recalculate and sync end date.
+    /// Changing end time → keep start fixed, recompute duration.
+    private var endDateBinding: Binding<Date> {
+        Binding(
+            get: { endDate },
+            set: { newDate in
+                endDate = newDate
+                let mins = max(1, Int(newDate.timeIntervalSince(startDate) / 60))
+                durationMinutes = mins
+                durationText = "\(mins)"
+            }
+        )
+    }
+
+    /// Changing duration via Stepper → keep start fixed, recompute end.
     private var durationStepperBinding: Binding<Int> {
         Binding(
             get: { durationMinutes },
@@ -223,7 +237,7 @@ struct EditEntrySheet: View {
                 let clamped = max(1, min(mins, 1440))
                 durationMinutes = clamped
                 durationText = "\(clamped)"
-                endDate = entry.startDate.addingTimeInterval(TimeInterval(clamped * 60))
+                endDate = startDate.addingTimeInterval(TimeInterval(clamped * 60))
             }
         )
     }
@@ -261,11 +275,14 @@ struct EditEntrySheet: View {
 
                 Divider().padding(.leading, 116)
 
-                // Start time (read-only)
+                // Start time — editable via DatePicker
                 formRow("Start time") {
-                    Text(entry.startDate, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute())
-                        .font(.system(size: 13, design: .rounded))
-                        .foregroundStyle(.secondary)
+                    DatePicker("",
+                               selection: startDateBinding,
+                               in: ...endDate,
+                               displayedComponents: [.date, .hourAndMinute])
+                        .labelsHidden()
+                        .datePickerStyle(.compact)
                 }
 
                 Divider().padding(.leading, 116)
@@ -274,7 +291,7 @@ struct EditEntrySheet: View {
                 formRow("End time") {
                     DatePicker("",
                                selection: endDateBinding,
-                               in: entry.startDate...,
+                               in: startDate...,
                                displayedComponents: [.date, .hourAndMinute])
                         .labelsHidden()
                         .datePickerStyle(.compact)
@@ -307,12 +324,12 @@ struct EditEntrySheet: View {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.escape)
                 Button("Save") {
-                    store.updateEntry(id: entry.id, endDate: endDate)
+                    store.updateEntry(id: entry.id, startDate: startDate, endDate: endDate)
                     dismiss()
                 }
                 .keyboardShortcut(.return)
                 .buttonStyle(.borderedProminent)
-                .disabled(endDate <= entry.startDate)
+                .disabled(endDate <= startDate)
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 14)
@@ -341,7 +358,7 @@ struct EditEntrySheet: View {
     private func commitDurationText() {
         if let mins = Int(durationText), mins >= 1, mins <= 1440 {
             durationMinutes = mins
-            endDate = entry.startDate.addingTimeInterval(TimeInterval(mins * 60))
+            endDate = startDate.addingTimeInterval(TimeInterval(mins * 60))
         }
         // Always reset text to the current (possibly clamped) value
         durationText = "\(durationMinutes)"

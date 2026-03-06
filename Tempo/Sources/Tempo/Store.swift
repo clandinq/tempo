@@ -74,9 +74,10 @@ final class TimeStore: ObservableObject {
 
     // MARK: Entry edits
 
-    func updateEntry(id: UUID, endDate: Date) {
+    func updateEntry(id: UUID, startDate: Date, endDate: Date) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
-        guard endDate > entries[idx].startDate else { return }
+        guard endDate > startDate else { return }
+        entries[idx].startDate = startDate
         entries[idx].endDate = endDate
         save()
     }
