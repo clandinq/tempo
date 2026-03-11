@@ -8,6 +8,7 @@ import SwiftUI
 final class MenuBarController {
 
     private let store: TimeStore
+    private let windowState = WindowState()
     private var statusItem: NSStatusItem!
     private var cancellables = Set<AnyCancellable>()
 
@@ -115,7 +116,7 @@ final class MenuBarController {
 
         menu.addItem(.separator())
 
-        let manageItem = NSMenuItem(title: "Manage Projects...", action: #selector(openManage), keyEquivalent: "")
+        let manageItem = NSMenuItem(title: "Manage Projects...", action: #selector(openProjects), keyEquivalent: "")
         manageItem.target = self
         menu.addItem(manageItem)
 
@@ -180,70 +181,27 @@ final class MenuBarController {
         store.stop()
     }
 
-    @objc private func openHistory() {
-        openOrFocusWindow(id: "history") {
-            let content = HistoryView().environmentObject(self.store)
-            let win = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 680, height: 520),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                backing: .buffered,
-                defer: false
-            )
-            win.title = "Tempo History"
-            win.center()
-            win.contentView = NSHostingView(rootView: content)
-            win.setFrameAutosaveName("HistoryWindow")
-            return win
-        }
-    }
+    @objc private func openHistory() { openMainWindow(tab: .history) }
+    @objc private func openInsights() { openMainWindow(tab: .insights) }
+    @objc private func openSettings() { openMainWindow(tab: .settings) }
+    @objc private func openProjects() { openMainWindow(tab: .projects) }
 
-    @objc private func openInsights() {
-        openOrFocusWindow(id: "insights") {
-            let content = InsightsView().environmentObject(self.store)
+    private func openMainWindow(tab: AppTab) {
+        windowState.selectedTab = tab
+        openOrFocusWindow(id: "main") {
+            let content = MainWindowView()
+                .environmentObject(self.store)
+                .environmentObject(self.windowState)
             let win = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 700, height: 520),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false
             )
-            win.title = "Tempo Insights"
+            win.title = "Tempo"
             win.center()
             win.contentView = NSHostingView(rootView: content)
-            win.setFrameAutosaveName("InsightsWindow")
-            return win
-        }
-    }
-
-    @objc private func openSettings() {
-        openOrFocusWindow(id: "settings") {
-            let content = SettingsView(settings: self.store.settings)
-            let win = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 380, height: 200),
-                styleMask: [.titled, .closable],
-                backing: .buffered,
-                defer: false
-            )
-            win.title = "Tempo Settings"
-            win.center()
-            win.contentView = NSHostingView(rootView: content)
-            win.setFrameAutosaveName("SettingsWindow")
-            return win
-        }
-    }
-
-    @objc private func openManage() {
-        openOrFocusWindow(id: "manage") {
-            let content = ManageProjectsView().environmentObject(self.store)
-            let win = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 420, height: 480),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                backing: .buffered,
-                defer: false
-            )
-            win.title = "Projects"
-            win.center()
-            win.contentView = NSHostingView(rootView: content)
-            win.setFrameAutosaveName("ManageWindow")
+            win.setFrameAutosaveName("MainWindow")
             return win
         }
     }

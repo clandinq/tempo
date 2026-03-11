@@ -53,7 +53,7 @@ struct SettingsView: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
         }
-        .frame(width: 380)
+        .frame(minWidth: 380, maxWidth: .infinity)
     }
 
     // MARK: Row

@@ -37,16 +37,22 @@ Only works when full Xcode (not just CLI Tools) is installed.
 ```
 Tempo/
   Sources/Tempo/
-    Models.swift           – Project and TimeEntry data types
-    Store.swift            – ObservableObject: timer logic, queries, persistence
-    Formatters.swift       – Duration string helpers
-    AppDelegate.swift      – NSApplicationDelegate entry point
-    MenuBarController.swift– Status item, menu building, window management
-    InsightsView.swift     – SwiftUI insights window with Swift Charts
-    ManageProjectsView.swift– SwiftUI project CRUD window
+    Models.swift              – Project and TimeEntry data types
+    Store.swift               – ObservableObject: timer logic, queries, persistence
+    Formatters.swift          – Duration string helpers
+    Settings.swift            – AppSettings (UserDefaults-backed)
+    NotificationManager.swift – Break/resume reminders
+    AppDelegate.swift         – NSApplicationDelegate entry point
+    main.swift                – Manual NSApplicationMain entry
+    MenuBarController.swift   – Status item, menu building, single tabbed window
+    MainWindowView.swift      – AppTab enum, WindowState, tabbed container view
+    HistoryView.swift         – History list with inline popover field editing
+    InsightsView.swift        – Insights dashboard with Swift Charts
+    ManageProjectsView.swift  – Project CRUD view
+    SettingsView.swift        – Reminder settings view
   Resources/
-    Info.plist             – LSUIElement=true (no Dock icon)
-Tempo.xcodeproj/           – Xcode project for IDE use
-Package.swift              – SPM manifest (requires full Xcode)
-build.sh                   – Direct swiftc build (CLI Tools compatible)
+    Info.plist                – LSUIElement=true (no Dock icon)
+Tempo.xcodeproj/              – Xcode project for IDE use
+Package.swift                 – SPM manifest (requires full Xcode)
+build.sh                      – Direct swiftc build (CLI Tools compatible)
 ```

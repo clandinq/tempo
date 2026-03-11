@@ -53,12 +53,17 @@ struct InsightsView: View {
         VStack(spacing: 0) {
             // Header bar
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Insights")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
-                    Text("Total: \(Formatters.shortDuration(totalSeconds))")
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Text(Formatters.shortDuration(totalSeconds))
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.primary)
+                        Text("total")
+                            .font(.system(size: 13, design: .rounded))
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
                 Picker("Period", selection: $period) {

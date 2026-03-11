@@ -46,6 +46,7 @@ swiftc \
     "$SRC/HistoryView.swift" \
     "$SRC/ManageProjectsView.swift" \
     "$SRC/SettingsView.swift" \
+    "$SRC/MainWindowView.swift" \
     "$SRC/MenuBarController.swift" \
     "$SRC/AppDelegate.swift" \
     "$SRC/main.swift" \

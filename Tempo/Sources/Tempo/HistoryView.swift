@@ -1,14 +1,8 @@
 import SwiftUI
 
-// MARK: - HistoryView
-
 struct HistoryView: View {
     @EnvironmentObject var store: TimeStore
-
-    @State private var editingEntry: TimeEntry? = nil
     @State private var confirmDeleteId: UUID? = nil
-
-    // MARK: Derived data
 
     private var groupedEntries: [(label: String, total: TimeInterval, entries: [TimeEntry])] {
         let cal = Calendar.current
@@ -21,13 +15,10 @@ struct HistoryView: View {
         }
     }
 
-    // MARK: Body
-
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
-
             if store.entries.isEmpty {
                 emptyState
             } else {
@@ -35,8 +26,11 @@ struct HistoryView: View {
                     ForEach(groupedEntries, id: \.label) { group in
                         Section {
                             ForEach(group.entries) { entry in
-                                entryRow(entry)
-                                    .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+                                InlineEditableEntryRow(entry: entry) {
+                                    confirmDeleteId = entry.id
+                                }
+                                .environmentObject(store)
+                                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
                             }
                         } header: {
                             HStack {
@@ -56,9 +50,6 @@ struct HistoryView: View {
             }
         }
         .frame(minWidth: 640, minHeight: 480)
-        .sheet(item: $editingEntry) { entry in
-            EditEntrySheet(entry: entry).environmentObject(store)
-        }
         .alert("Delete Entry?", isPresented: Binding(
             get: { confirmDeleteId != nil },
             set: { if !$0 { confirmDeleteId = nil } }
@@ -72,8 +63,6 @@ struct HistoryView: View {
             Text("This tracked entry will be permanently removed.")
         }
     }
-
-    // MARK: Sub-views
 
     private var header: some View {
         HStack {
@@ -105,69 +94,6 @@ struct HistoryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    @ViewBuilder
-    private func entryRow(_ entry: TimeEntry) -> some View {
-        let project = store.projects.first(where: { $0.id == entry.projectId })
-
-        HStack(spacing: 10) {
-            // Project color + name
-            Circle()
-                .fill(project?.color.color ?? Color.secondary.opacity(0.4))
-                .frame(width: 8, height: 8)
-
-            Text(project?.name ?? "Deleted project")
-                .font(.system(size: 13, design: .rounded))
-                .lineLimit(1)
-                .frame(minWidth: 100, maxWidth: 160, alignment: .leading)
-
-            Spacer()
-
-            // Start → End
-            Text(entry.startDate, format: .dateTime.hour().minute())
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.secondary)
-
-            Text("→")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-
-            Text(entry.endDate, format: .dateTime.hour().minute())
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .frame(width: 68, alignment: .leading)
-
-            // Duration
-            Text(Formatters.shortDuration(entry.duration))
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .frame(width: 68, alignment: .trailing)
-
-            // Action buttons
-            HStack(spacing: 2) {
-                Button {
-                    editingEntry = entry
-                } label: {
-                    Image(systemName: "pencil")
-                        .frame(width: 22, height: 22)
-                }
-                .buttonStyle(.borderless)
-                .help("Edit entry")
-
-                Button {
-                    confirmDeleteId = entry.id
-                } label: {
-                    Image(systemName: "trash")
-                        .foregroundStyle(.red.opacity(0.65))
-                        .frame(width: 22, height: 22)
-                }
-                .buttonStyle(.borderless)
-                .help("Delete entry")
-            }
-        }
-        .padding(.vertical, 5)
-    }
-
-    // MARK: Helpers
-
     private func dayLabel(for date: Date) -> String {
         let cal = Calendar.current
         if cal.isDateInToday(date) { return "Today" }
@@ -178,22 +104,25 @@ struct HistoryView: View {
     }
 }
 
-// MARK: - EditEntrySheet
-
-struct EditEntrySheet: View {
+struct InlineEditableEntryRow: View {
     @EnvironmentObject var store: TimeStore
-    @Environment(\.dismiss) private var dismiss
-
     let entry: TimeEntry
+    let onDelete: () -> Void
 
     @State private var startDate: Date
     @State private var endDate: Date
     @State private var durationMinutes: Int
-    // Separate text state so typing "120" doesn't flicker through intermediate values.
     @State private var durationText: String
+    @State private var showStart = false
+    @State private var showEnd   = false
+    @State private var showDur   = false
+    @State private var hoverStart = false
+    @State private var hoverEnd   = false
+    @State private var hoverDur   = false
 
-    init(entry: TimeEntry) {
+    init(entry: TimeEntry, onDelete: @escaping () -> Void) {
         self.entry = entry
+        self.onDelete = onDelete
         let mins = max(1, Int(entry.duration / 60))
         _startDate       = State(initialValue: entry.startDate)
         _endDate         = State(initialValue: entry.endDate)
@@ -201,9 +130,6 @@ struct EditEntrySheet: View {
         _durationText    = State(initialValue: "\(mins)")
     }
 
-    // MARK: Linked bindings
-
-    /// Changing start time → keep end fixed, recompute duration.
     private var startDateBinding: Binding<Date> {
         Binding(
             get: { startDate },
@@ -216,7 +142,6 @@ struct EditEntrySheet: View {
         )
     }
 
-    /// Changing end time → keep start fixed, recompute duration.
     private var endDateBinding: Binding<Date> {
         Binding(
             get: { endDate },
@@ -229,7 +154,6 @@ struct EditEntrySheet: View {
         )
     }
 
-    /// Changing duration via Stepper → keep start fixed, recompute end.
     private var durationStepperBinding: Binding<Int> {
         Binding(
             get: { durationMinutes },
@@ -246,61 +170,87 @@ struct EditEntrySheet: View {
         store.projects.first(where: { $0.id == entry.projectId })
     }
 
-    // MARK: Body
+    private func save() {
+        guard endDate > startDate else { return }
+        store.updateEntry(id: entry.id, startDate: startDate, endDate: endDate)
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Edit Entry")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                Spacer()
+        HStack(spacing: 10) {
+            Circle()
+                .fill(project?.color.color ?? Color.secondary.opacity(0.4))
+                .frame(width: 8, height: 8)
+
+            Text(project?.name ?? "Deleted project")
+                .font(.system(size: 13, design: .rounded))
+                .lineLimit(1)
+                .frame(minWidth: 100, maxWidth: 160, alignment: .leading)
+
+            Spacer()
+
+            Button { showStart.toggle() } label: {
+                Text(startDate, format: .dateTime.hour().minute())
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(hoverStart ? Color.accentColor : Color.secondary)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(RoundedRectangle(cornerRadius: 4).fill(hoverStart ? Color.accentColor.opacity(0.08) : Color.clear))
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 20)
-            .padding(.bottom, 16)
-
-            Divider()
-
-            VStack(spacing: 0) {
-                // Project (read-only)
-                formRow("Project") {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(project?.color.color ?? Color.secondary.opacity(0.4))
-                            .frame(width: 8, height: 8)
-                        Text(project?.name ?? "Deleted project")
-                            .font(.system(size: 13, design: .rounded))
-                    }
-                }
-
-                Divider().padding(.leading, 116)
-
-                // Start time — editable via DatePicker
-                formRow("Start time") {
-                    DatePicker("",
-                               selection: startDateBinding,
-                               in: ...endDate,
-                               displayedComponents: [.date, .hourAndMinute])
+            .buttonStyle(.plain)
+            .onHover { hoverStart = $0 }
+            .popover(isPresented: $showStart) {
+                VStack(spacing: 12) {
+                    DatePicker("", selection: startDateBinding, in: ...endDate, displayedComponents: [.date, .hourAndMinute])
                         .labelsHidden()
                         .datePickerStyle(.compact)
+                    Button("Done") { showStart = false }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
                 }
+                .padding(16)
+                .onDisappear { save() }
+            }
 
-                Divider().padding(.leading, 116)
+            Text("->")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
 
-                // End time — editable via DatePicker
-                formRow("End time") {
-                    DatePicker("",
-                               selection: endDateBinding,
-                               in: startDate...,
-                               displayedComponents: [.date, .hourAndMinute])
+            Button { showEnd.toggle() } label: {
+                Text(endDate, format: .dateTime.hour().minute())
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(hoverEnd ? Color.accentColor : Color.secondary)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(RoundedRectangle(cornerRadius: 4).fill(hoverEnd ? Color.accentColor.opacity(0.08) : Color.clear))
+            }
+            .buttonStyle(.plain)
+            .onHover { hoverEnd = $0 }
+            .popover(isPresented: $showEnd) {
+                VStack(spacing: 12) {
+                    DatePicker("", selection: endDateBinding, in: startDate..., displayedComponents: [.date, .hourAndMinute])
                         .labelsHidden()
                         .datePickerStyle(.compact)
+                    Button("Done") { showEnd = false }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
                 }
+                .padding(16)
+                .onDisappear { save() }
+            }
 
-                Divider().padding(.leading, 116)
-
-                // Duration — editable via text field + stepper, synced with end time
-                formRow("Duration") {
+            Button { showDur.toggle() } label: {
+                Text(Formatters.shortDuration(entry.duration))
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundStyle(hoverDur ? Color.accentColor : Color.primary)
+                    .frame(width: 60, alignment: .trailing)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(RoundedRectangle(cornerRadius: 4).fill(hoverDur ? Color.accentColor.opacity(0.08) : Color.clear))
+            }
+            .buttonStyle(.plain)
+            .onHover { hoverDur = $0 }
+            .popover(isPresented: $showDur) {
+                VStack(spacing: 12) {
                     HStack(spacing: 6) {
                         TextField("", text: $durationText)
                             .textFieldStyle(.roundedBorder)
@@ -313,54 +263,40 @@ struct EditEntrySheet: View {
                             .font(.system(size: 12, design: .rounded))
                             .foregroundStyle(.secondary)
                     }
+                    Button("Done") { showDur = false }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
                 }
+                .padding(16)
+                .onDisappear { save() }
             }
-            .padding(.vertical, 8)
 
-            Divider()
-
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.escape)
-                Button("Save") {
-                    store.updateEntry(id: entry.id, startDate: startDate, endDate: endDate)
-                    dismiss()
-                }
-                .keyboardShortcut(.return)
-                .buttonStyle(.borderedProminent)
-                .disabled(endDate <= startDate)
+            Button { onDelete() } label: {
+                Image(systemName: "trash")
+                    .foregroundStyle(.red.opacity(0.65))
+                    .frame(width: 22, height: 22)
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 14)
+            .buttonStyle(.borderless)
+            .help("Delete entry")
         }
-        .frame(width: 420)
+        .padding(.vertical, 5)
+        .onChange(of: entry.startDate) { newDate in
+            startDate = newDate
+            let mins = max(1, Int(endDate.timeIntervalSince(newDate) / 60))
+            durationMinutes = mins; durationText = "\(mins)"
+        }
+        .onChange(of: entry.endDate) { newDate in
+            endDate = newDate
+            let mins = max(1, Int(newDate.timeIntervalSince(startDate) / 60))
+            durationMinutes = mins; durationText = "\(mins)"
+        }
     }
 
-    // MARK: Helpers
-
-    @ViewBuilder
-    private func formRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: 12) {
-            Text(label)
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(.secondary)
-                .frame(width: 96, alignment: .trailing)
-            content()
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-    }
-
-    /// Called when the user presses Return in the duration text field.
-    /// Parses the typed value and updates both endDate and the display.
     private func commitDurationText() {
         if let mins = Int(durationText), mins >= 1, mins <= 1440 {
             durationMinutes = mins
             endDate = startDate.addingTimeInterval(TimeInterval(mins * 60))
         }
-        // Always reset text to the current (possibly clamped) value
         durationText = "\(durationMinutes)"
     }
 }
