@@ -12,6 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         menuBarController = MenuBarController(store: store)
+        // Request notification permission after app is fully initialized so
+        // the permission dialog can be shown to the user.
+        NotificationManager.shared.requestPermission()
     }
 
     func applicationWillTerminate(_ notification: Notification) {

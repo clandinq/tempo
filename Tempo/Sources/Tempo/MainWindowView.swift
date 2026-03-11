@@ -1,14 +1,12 @@
 import SwiftUI
 
 enum AppTab: String, CaseIterable {
-    case projects = "projects"
     case insights = "insights"
     case history  = "history"
     case settings = "settings"
 
     var label: String {
         switch self {
-        case .projects: return "Projects"
         case .insights: return "Insights"
         case .history:  return "History"
         case .settings: return "Settings"
@@ -17,7 +15,6 @@ enum AppTab: String, CaseIterable {
 
     var icon: String {
         switch self {
-        case .projects: return "folder.fill"
         case .insights: return "chart.bar.fill"
         case .history:  return "clock.fill"
         case .settings: return "gearshape.fill"
@@ -83,10 +80,9 @@ struct MainWindowView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch windowState.selectedTab {
-        case .projects: ManageProjectsView().environmentObject(store)
         case .insights: InsightsView().environmentObject(store)
         case .history:  HistoryView().environmentObject(store)
-        case .settings: SettingsView(settings: store.settings)
+        case .settings: SettingsView(settings: store.settings).environmentObject(store)
         }
     }
 }

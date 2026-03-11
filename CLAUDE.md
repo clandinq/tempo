@@ -1,6 +1,6 @@
 # Tempo — Claude Code Instructions
 
-## Build after every change
+## Build and relaunch after every change
 
 After any Swift source file modification, always run:
 
@@ -9,6 +9,12 @@ After any Swift source file modification, always run:
 ```
 
 This compiles all sources with `swiftc` (no Xcode required) and installs to `/Applications/Tempo.app`. The build will surface any Swift compile errors immediately.
+
+After a successful install, relaunch the app so changes take effect:
+
+```bash
+pkill -x Tempo; sleep 0.5; open /Applications/Tempo.app
+```
 
 ## Project type: Development
 

@@ -79,30 +79,17 @@ final class MenuBarController {
     private func populateMenu(_ menu: NSMenu) {
         menu.removeAllItems()
 
-        let today = store.todayRange()
-
         if store.projects.isEmpty {
             let empty = NSMenuItem(title: "No projects yet", action: nil, keyEquivalent: "")
             empty.isEnabled = false
             menu.addItem(empty)
         } else {
             for project in store.projects {
-                let todaySeconds = store.totalTime(for: project.id, in: today)
-                let suffix: String
-                if store.activeProjectId == project.id, store.isRunning {
-                    let live = Formatters.elapsedClock(store.currentSessionElapsed)
-                    let todayStr = Formatters.shortDuration(todaySeconds)
-                    suffix = "  \(live)  (today: \(todayStr))"
-                } else {
-                    let todayStr = Formatters.shortDuration(todaySeconds)
-                    suffix = "  (today: \(todayStr))"
-                }
-
                 let item = NSMenuItem(title: "", action: #selector(projectTapped(_:)), keyEquivalent: "")
                 item.target = self
                 item.representedObject = project.id
                 item.state = (store.activeProjectId == project.id) ? .on : .off
-                item.attributedTitle = coloredMenuTitle(project: project, suffix: suffix)
+                item.attributedTitle = coloredMenuTitle(project: project, suffix: "")
                 menu.addItem(item)
             }
         }
@@ -184,7 +171,7 @@ final class MenuBarController {
     @objc private func openHistory() { openMainWindow(tab: .history) }
     @objc private func openInsights() { openMainWindow(tab: .insights) }
     @objc private func openSettings() { openMainWindow(tab: .settings) }
-    @objc private func openProjects() { openMainWindow(tab: .projects) }
+    @objc private func openProjects() { openMainWindow(tab: .settings) }
 
     private func openMainWindow(tab: AppTab) {
         windowState.selectedTab = tab

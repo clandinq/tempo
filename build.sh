@@ -67,8 +67,12 @@ if [[ "${1:-}" == "--install" ]]; then
     echo "Installing to $DEST ..."
     rm -rf "$DEST"
     cp -r "$APP" "$DEST"
-    # Remove quarantine flag so Gatekeeper doesn't block unsigned binary
+    # Remove quarantine flag so Gatekeeper doesn't block the binary
     xattr -dr com.apple.quarantine "$DEST" 2>/dev/null || true
+    # Ad-hoc sign the app bundle so macOS can track its identity for
+    # notifications, keychain, and other system services that require a
+    # code signature (even without a developer certificate).
+    codesign --force --sign - "$DEST" 2>/dev/null && echo "Ad-hoc signed." || echo "codesign skipped (not critical)."
     echo "Installed. Launch from Spotlight or: open '$DEST'"
 else
     echo "To run:    open '$APP'"

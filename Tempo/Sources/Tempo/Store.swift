@@ -34,7 +34,6 @@ final class TimeStore: ObservableObject {
     init() {
         load()
         startTickTimer()
-        notifications.requestPermission()
     }
 
     // MARK: Timer management

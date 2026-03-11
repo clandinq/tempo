@@ -28,6 +28,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error {
                 print("Tempo notifications: permission error: \(error)")
+            } else {
+                print("Tempo notifications: permission granted = \(granted)")
             }
         }
     }
@@ -53,6 +55,26 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     func cancelBreak() {
         center.removePendingNotificationRequests(withIdentifiers: [ID.breakReminder])
+    }
+
+    func checkAuthorizationStatus(completion: @escaping (UNAuthorizationStatus) -> Void) {
+        center.getNotificationSettings { settings in
+            DispatchQueue.main.async { completion(settings.authorizationStatus) }
+        }
+    }
+
+    func scheduleTest() {
+        let content = UNMutableNotificationContent()
+        content.title = "Tempo notifications are working!"
+        content.body  = "Break and resume reminders will appear like this."
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+        let request  = UNNotificationRequest(identifier: "tempo.test", content: content, trigger: trigger)
+
+        center.add(request) { error in
+            if let error { print("Tempo: test notification error: \(error)") }
+        }
     }
 
     // MARK: Resume reminder
