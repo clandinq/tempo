@@ -9,8 +9,11 @@ A minimal macOS menu bar app for tracking time across projects.
 - Active timer shows elapsed time in the menu bar
 - Stop tracking without switching projects
 - Today's time per project shown inline in the menu
-- Add, rename, and delete projects freely
-- Insights window: Today / This Week / This Month breakdown with bar chart
+- Add, rename, recolor, and delete projects from the Settings tab
+- Break reminder: notification after N minutes of continuous tracking
+- Resume reminder: notification after M minutes of being stopped
+- Insights tab: Today / This Week / This Month breakdown with bar chart
+- History tab: browse and edit past time entries inline
 - All data stored locally in `~/Library/Application Support/Tempo/data.json`
 
 ## Building
@@ -18,11 +21,16 @@ A minimal macOS menu bar app for tracking time across projects.
 ### With the build script (no Xcode required)
 
 ```bash
+# Build only
 ./build.sh
-open .build/Tempo.app
+
+# Build and install to /Applications (also ad-hoc signs for notifications)
+./build.sh --install
 ```
 
 Requires: macOS Command Line Tools with Swift 5.8+ (`xcode-select --install`)
+
+> **Note on notifications:** The `--install` flag ad-hoc signs the app bundle (`codesign --sign -`) so macOS registers it in System Settings → Notifications. Without a signature the app won't appear in the Notifications list. After first install, open **Settings → Notifications → Open Settings** and enable Tempo there.
 
 ### In Xcode
 
