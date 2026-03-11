@@ -84,12 +84,24 @@ final class MenuBarController {
             empty.isEnabled = false
             menu.addItem(empty)
         } else {
+            let todayStart = Calendar.current.startOfDay(for: Date())
+            let todayInterval = DateInterval(start: todayStart, end: Date())
             for project in store.projects {
                 let item = NSMenuItem(title: "", action: #selector(projectTapped(_:)), keyEquivalent: "")
                 item.target = self
                 item.representedObject = project.id
                 item.state = (store.activeProjectId == project.id) ? .on : .off
-                item.attributedTitle = coloredMenuTitle(project: project, suffix: "")
+                let todaySeconds = store.totalTime(for: project.id, in: todayInterval)
+                let suffix: String
+                if store.activeProjectId == project.id, store.isRunning {
+                    let live = Formatters.elapsedClock(store.currentSessionElapsed)
+                    let todayStr = Formatters.shortDuration(todaySeconds)
+                    suffix = "  \(live)  (today: \(todayStr))"
+                } else {
+                    let todayStr = Formatters.shortDuration(todaySeconds)
+                    suffix = "  (today: \(todayStr))"
+                }
+                item.attributedTitle = coloredMenuTitle(project: project, suffix: suffix)
                 menu.addItem(item)
             }
         }
