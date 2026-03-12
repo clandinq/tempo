@@ -16,6 +16,8 @@ final class MenuBarController {
         self.store = store
         setupStatusItem()
         subscribeToStore()
+        NotificationManager.shared.onStartBreak = { [weak self] in self?.store.startBreak() }
+        NotificationManager.shared.onBreakDismissed = { [weak self] in self?.store.rescheduleBreakIfRunning() }
     }
 
     // MARK: Setup
@@ -106,6 +108,12 @@ final class MenuBarController {
             }
         }
 
+        if store.isRunning, store.activeProjectId != Project.breakProjectID {
+            let breakItem = NSMenuItem(title: "Start Break", action: #selector(startBreakTapped), keyEquivalent: "")
+            breakItem.target = self
+            menu.addItem(breakItem)
+        }
+
         menu.addItem(.separator())
 
         let stopItem = NSMenuItem(title: "Stop", action: #selector(stopTapped), keyEquivalent: "")
@@ -178,6 +186,10 @@ final class MenuBarController {
 
     @objc private func stopTapped() {
         store.stop()
+    }
+
+    @objc private func startBreakTapped() {
+        store.startBreak()
     }
 
     @objc private func openHistory() { openMainWindow(tab: .history) }

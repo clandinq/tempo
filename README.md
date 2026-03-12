@@ -10,10 +10,13 @@ A minimal macOS menu bar app for tracking time across projects.
 - Stop tracking without switching projects
 - Today's time per project shown inline in the menu
 - Add, rename, recolor, and delete projects from the Settings tab
-- Break reminder: notification after N minutes of continuous tracking
+- Break reminder: notification after N minutes of continuous tracking, with "Start Break" and "Dismiss" action buttons
 - Resume reminder: notification after M minutes of being stopped
-- Insights tab: Today / This Week / This Month breakdown with bar chart
+- Built-in **Break** project: start a break from the menu bar or directly from the notification; break time is tracked separately and excluded from work totals
+- Auto-stop breaks: optionally stop break tracking automatically after a configured number of minutes
+- Insights tab: Today / This Week / This Month breakdown with bar chart; break time shown as a footnoted row
 - History tab: browse and edit past time entries inline
+- Crash recovery: active session is persisted and the break reminder reschedules itself on relaunch
 - All data stored locally in `~/Library/Application Support/Tempo/data.json`
 
 ## Building
@@ -45,7 +48,7 @@ Only works when full Xcode (not just CLI Tools) is installed.
 ```
 Tempo/
   Sources/Tempo/
-    Models.swift              – Project and TimeEntry data types
+    Models.swift              – Project (w/ isBreak), TimeEntry, AppData data types
     Store.swift               – ObservableObject: timer logic, queries, persistence
     Formatters.swift          – Duration string helpers
     Settings.swift            – AppSettings (UserDefaults-backed)

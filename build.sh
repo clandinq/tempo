@@ -10,6 +10,12 @@ SRC="$PROJ_DIR/Tempo/Sources/Tempo"
 RESOURCES="$PROJ_DIR/Tempo/Resources"
 OUT_DIR="$PROJ_DIR/.build"
 APP="$OUT_DIR/Tempo.app"
+MODULE_CACHE="$OUT_DIR/ModuleCache"
+SWIFTC="/Library/Developer/CommandLineTools/usr/bin/swiftc"
+
+if [ ! -x "$SWIFTC" ]; then
+    SWIFTC="/usr/bin/swiftc"
+fi
 
 # Pick the best available macOS SDK
 SDK="$(xcrun --show-sdk-path 2>/dev/null || echo /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk)"
@@ -26,9 +32,12 @@ echo "Building Tempo..."
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 mkdir -p "$APP/Contents/Resources"
+mkdir -p "$MODULE_CACHE"
 
 # Compile all Swift sources
-swiftc \
+"$SWIFTC" \
+    -module-cache-path "$MODULE_CACHE" \
+    -Xcc "-fmodules-cache-path=$MODULE_CACHE" \
     -sdk "$SDK" \
     -target x86_64-apple-macos13.0 \
     -framework AppKit \

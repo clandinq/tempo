@@ -17,9 +17,39 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         static let resumeReminder = "tempo.resume"
     }
 
+    private enum ActionID {
+        static let startBreak = "tempo.action.startBreak"
+        static let dismiss    = "tempo.action.dismiss"
+    }
+
+    private enum CategoryID {
+        static let breakReminder = "tempo.category.break"
+    }
+
+    var onStartBreak: (() -> Void)?
+    var onBreakDismissed: (() -> Void)?
+
     override init() {
         super.init()
         center.delegate = self
+
+        let startAction = UNNotificationAction(
+            identifier: ActionID.startBreak,
+            title: "Start Break",
+            options: .foreground
+        )
+        let dismissAction = UNNotificationAction(
+            identifier: ActionID.dismiss,
+            title: "Dismiss",
+            options: []
+        )
+        let category = UNNotificationCategory(
+            identifier: CategoryID.breakReminder,
+            actions: [startAction, dismissAction],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+        center.setNotificationCategories([category])
     }
 
     // MARK: Permission
@@ -42,8 +72,9 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
         let content = UNMutableNotificationContent()
         content.title = "Time for a break!"
-        content.body  = "You've been tracking \"\(projectName)\" for \(Int(seconds / 60)) minutes."
+        content.body  = "You've been working on \"\(projectName)\" for \(Int(seconds / 60)) minutes."
         content.sound = .default
+        content.categoryIdentifier = CategoryID.breakReminder
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
         let request = UNNotificationRequest(identifier: ID.breakReminder, content: content, trigger: trigger)
@@ -109,5 +140,21 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         withCompletionHandler handler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         handler([.banner, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler handler: @escaping () -> Void
+    ) {
+        switch response.actionIdentifier {
+        case ActionID.startBreak:
+            DispatchQueue.main.async { self.onStartBreak?() }
+        case ActionID.dismiss, UNNotificationDismissActionIdentifier:
+            DispatchQueue.main.async { self.onBreakDismissed?() }
+        default:
+            break
+        }
+        handler()
     }
 }

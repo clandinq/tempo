@@ -4,7 +4,7 @@ import Combine
 // MARK: - TimeStore
 
 /// Single source of truth for all app state. Handles persistence and timer ticks.
-final class TimeStore: ObservableObject {
+public final class TimeStore: ObservableObject {
 
     // MARK: Published state
 
@@ -18,6 +18,7 @@ final class TimeStore: ObservableObject {
 
     // Fires every second so the menu bar elapsed label stays fresh
     private var tickTimer: Timer?
+    private var autoStopTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: Persistence
@@ -60,12 +61,14 @@ final class TimeStore: ObservableObject {
     }
 
     func renameProject(id: UUID, to name: String) {
+        guard id != Project.breakProjectID else { return }
         guard let idx = projects.firstIndex(where: { $0.id == id }) else { return }
         projects[idx].name = name
         save()
     }
 
     func recolorProject(id: UUID, color: ProjectColor) {
+        guard id != Project.breakProjectID else { return }
         guard let idx = projects.firstIndex(where: { $0.id == id }) else { return }
         projects[idx].color = color
         save()
@@ -87,6 +90,7 @@ final class TimeStore: ObservableObject {
     }
 
     func deleteProject(id: UUID) {
+        guard id != Project.breakProjectID else { return }
         // Stop tracking if this project is active
         if activeProjectId == id { stop() }
         projects.removeAll { $0.id == id }
@@ -99,31 +103,52 @@ final class TimeStore: ObservableObject {
     /// Start (or switch to) tracking a project.
     func startTracking(projectId: UUID) {
         guard let project = projects.first(where: { $0.id == projectId }) else { return }
-
-        // Flush any in-flight session for the previous project
         flushCurrentSession()
-
         activeProjectId = projectId
         sessionStart = Date()
         save()
 
-        // Cancel any pending "get back to work" reminder, schedule a break reminder
-        notifications.cancelResume()
-        notifications.scheduleBreak(
-            projectName: project.name,
-            in: TimeInterval(settings.breakReminderMinutes * 60)
-        )
+        if project.isBreak {
+            notifications.cancelBreak()
+            notifications.cancelResume()
+            scheduleAutoStopIfEnabled()
+        } else {
+            cancelAutoStop()
+            notifications.cancelResume()
+            notifications.scheduleBreak(
+                projectName: project.name,
+                in: TimeInterval(settings.breakReminderMinutes * 60)
+            )
+        }
     }
 
     /// Pause tracking without clearing the active project.
     func stop() {
+        let wasBreak = projects.first(where: { $0.id == activeProjectId })?.isBreak ?? false
+        cancelAutoStop()
         flushCurrentSession()
         sessionStart = nil
         save()
 
-        // Cancel break reminder, schedule a "resume" nudge
         notifications.cancelBreak()
-        notifications.scheduleResume(in: TimeInterval(settings.resumeReminderMinutes * 60))
+        if !wasBreak {
+            notifications.scheduleResume(in: TimeInterval(settings.resumeReminderMinutes * 60))
+        }
+    }
+
+    public func startBreak() {
+        startTracking(projectId: Project.breakProjectID)
+    }
+
+    func rescheduleBreakIfRunning() {
+        guard let pid = activeProjectId,
+              let project = projects.first(where: { $0.id == pid }),
+              !project.isBreak,
+              isRunning else { return }
+        notifications.scheduleBreak(
+            projectName: project.name,
+            in: TimeInterval(settings.breakReminderMinutes * 60)
+        )
     }
 
     /// True when the timer is actively counting.
@@ -200,10 +225,42 @@ final class TimeStore: ObservableObject {
         sessionStart = nil
     }
 
+    private func ensureBreakProject() {
+        guard !projects.contains(where: { $0.id == Project.breakProjectID }) else { return }
+        let bp = Project(
+            id: Project.breakProjectID,
+            name: "Break",
+            color: .teal,
+            createdAt: .distantPast,
+            isBreak: true
+        )
+        projects.insert(bp, at: 0)
+        save()
+    }
+
+    private func scheduleAutoStopIfEnabled() {
+        cancelAutoStop()
+        guard settings.autoStopBreakEnabled else { return }
+        let interval = TimeInterval(settings.autoStopBreakMinutes * 60)
+        autoStopTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
+            self?.stop()
+        }
+    }
+
+    private func cancelAutoStop() {
+        autoStopTimer?.invalidate()
+        autoStopTimer = nil
+    }
+
     // MARK: Persistence
 
     private func save() {
-        let data = AppData(projects: projects, entries: entries)
+        let data = AppData(
+            projects: projects,
+            entries: entries,
+            activeProjectId: activeProjectId,
+            sessionStart: sessionStart
+        )
         do {
             let encoded = try JSONEncoder().encode(data)
             try encoded.write(to: dataURL, options: .atomic)
@@ -215,6 +272,7 @@ final class TimeStore: ObservableObject {
     private func load() {
         guard FileManager.default.fileExists(atPath: dataURL.path) else {
             seedDefaultProject()
+            ensureBreakProject()
             return
         }
         do {
@@ -222,9 +280,29 @@ final class TimeStore: ObservableObject {
             let data = try JSONDecoder().decode(AppData.self, from: raw)
             self.projects = data.projects
             self.entries = data.entries
+
+            if let start = data.sessionStart,
+               let pid = data.activeProjectId,
+               let project = projects.first(where: { $0.id == pid }),
+               !project.isBreak {
+                activeProjectId = pid
+                sessionStart = start
+            }
+
+            ensureBreakProject()
+
+            if let start = sessionStart,
+               let pid = activeProjectId,
+               let project = projects.first(where: { $0.id == pid }),
+               !project.isBreak {
+                let elapsed = Date().timeIntervalSince(start)
+                let remaining = max(1, TimeInterval(settings.breakReminderMinutes * 60) - elapsed)
+                notifications.scheduleBreak(projectName: project.name, in: remaining)
+            }
         } catch {
             print("Tempo: load failed: \(error)")
             seedDefaultProject()
+            ensureBreakProject()
         }
     }
 

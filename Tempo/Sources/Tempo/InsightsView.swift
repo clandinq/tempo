@@ -47,7 +47,9 @@ struct InsightsView: View {
         .sorted { $0.seconds > $1.seconds }
     }
 
-    var totalSeconds: TimeInterval { stats.reduce(0) { $0 + $1.seconds } }
+    var workStats: [ProjectStat] { stats.filter { $0.id != Project.breakProjectID } }
+    var breakStat: ProjectStat? { stats.first { $0.id == Project.breakProjectID } }
+    var totalSeconds: TimeInterval { workStats.reduce(0) { $0 + $1.seconds } }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -80,7 +82,7 @@ struct InsightsView: View {
 
             Divider()
 
-            if stats.isEmpty {
+            if workStats.isEmpty {
                 emptyStateView
             } else {
                 ScrollView {
@@ -117,7 +119,7 @@ struct InsightsView: View {
             Text("Time per Project")
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
 
-            Chart(stats) { stat in
+            Chart(workStats) { stat in
                 BarMark(
                     x: .value("Hours", stat.hours),
                     y: .value("Project", stat.name)
@@ -155,7 +157,7 @@ struct InsightsView: View {
                 }
             }
             .chartLegend(.hidden)
-            .frame(height: max(60, CGFloat(stats.count) * 44 + 16))
+            .frame(height: max(60, CGFloat(workStats.count) * 44 + 16))
         }
         .padding(20)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(NSColor.controlBackgroundColor)))
@@ -185,7 +187,7 @@ struct InsightsView: View {
 
                 Divider()
 
-                ForEach(Array(stats.enumerated()), id: \.element.id) { idx, stat in
+                ForEach(Array(workStats.enumerated()), id: \.element.id) { idx, stat in
                     HStack {
                         Circle()
                             .fill(stat.color.color)
@@ -204,7 +206,23 @@ struct InsightsView: View {
                     .padding(.vertical, 10)
                     .background(idx % 2 == 0 ? Color.clear : Color(NSColor.alternatingContentBackgroundColors[1]))
 
-                    if idx < stats.count - 1 { Divider() }
+                    if idx < workStats.count - 1 { Divider() }
+                }
+
+                if store.settings.showBreakTimeInInsights, let bs = breakStat, bs.seconds > 0 {
+                    Divider()
+                    HStack {
+                        Circle().fill(bs.color.color).frame(width: 8, height: 8)
+                        Text(bs.name).font(.system(size: 13, design: .rounded))
+                        Text("(not included in total)")
+                            .font(.system(size: 11)).foregroundStyle(.tertiary)
+                        Spacer()
+                        Text(Formatters.shortDuration(bs.seconds))
+                            .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        Text("—").frame(width: 60, alignment: .trailing)
+                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 10)
                 }
             }
             .background(RoundedRectangle(cornerRadius: 12).fill(Color(NSColor.controlBackgroundColor)))

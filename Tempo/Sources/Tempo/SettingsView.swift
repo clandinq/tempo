@@ -101,6 +101,36 @@ struct SettingsView: View {
                 value: $settings.resumeReminderMinutes,
                 range: 1...120
             )
+
+            Divider().padding(.leading, 56)
+
+            Toggle(isOn: $settings.showBreakTimeInInsights) {
+                Label("Show break time in Insights", systemImage: "cup.and.saucer.fill")
+            }
+            .toggleStyle(.switch)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 10)
+
+            Divider().padding(.leading, 56)
+
+            Toggle(isOn: $settings.autoStopBreakEnabled) {
+                Label("Auto-stop breaks", systemImage: "timer")
+            }
+            .toggleStyle(.switch)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 10)
+
+            if settings.autoStopBreakEnabled {
+                Divider().padding(.leading, 56)
+
+                reminderRow(
+                    icon: "timer",
+                    title: "Auto-stop after",
+                    detail: "Automatically stop break tracking after this many minutes",
+                    value: $settings.autoStopBreakMinutes,
+                    range: 1...120
+                )
+            }
         }
     }
 
@@ -136,7 +166,9 @@ struct SettingsView: View {
     }
 
     private var projectsSection: some View {
-        VStack(spacing: 0) {
+        let visibleProjects = store.projects.filter { !$0.isBreak }
+
+        return VStack(spacing: 0) {
             // Section header with [+] button
             HStack {
                 Text("Projects")
@@ -159,15 +191,15 @@ struct SettingsView: View {
             .padding(.vertical, 10)
 
             // Project list
-            if !store.projects.isEmpty {
+            if !visibleProjects.isEmpty {
                 List {
-                    ForEach(store.projects) { project in
+                    ForEach(visibleProjects) { project in
                         projectRow(project)
                             .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
                     }
                 }
                 .listStyle(.inset)
-                .frame(minHeight: 44, maxHeight: min(CGFloat(store.projects.count) * 52 + 16, 260))
+                .frame(minHeight: 44, maxHeight: min(CGFloat(visibleProjects.count) * 52 + 16, 260))
             }
 
             // Inline add form (shown when [+] is tapped)

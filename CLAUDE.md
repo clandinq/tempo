@@ -22,7 +22,7 @@ pkill -x Tempo; sleep 0.5; open /Applications/Tempo.app
 
 ```
 Tempo/Sources/Tempo/
-  Models.swift              – Project, TimeEntry, ProjectColor data types
+  Models.swift              – Project (isBreak, breakProjectID), TimeEntry, AppData (w/ session fields)
   Store.swift               – TimeStore: timer logic, queries, JSON persistence
   Formatters.swift          – Duration string helpers (shortDuration, elapsedClock)
   Settings.swift            – AppSettings (UserDefaults-backed)
@@ -48,7 +48,9 @@ build.sh                    – Direct swiftc build script; adds new .swift file
 - **Single source of truth**: `TimeStore` (ObservableObject) holds all state; views use `@EnvironmentObject`
 - **Single window**: `MenuBarController` opens one "Tempo" window (`openMainWindow(tab:)`). All four menu items (Manage Projects, Insights, History, Settings) open the same window to the appropriate tab.
 - **WindowState**: `ObservableObject` owned by `MenuBarController`; holds `selectedTab: AppTab`. Setting it before calling `openOrFocusWindow` switches tabs even when the window is already open.
-- **Data persistence**: JSON to `~/Library/Application Support/Tempo/data.json`
+- **Data persistence**: JSON to `~/Library/Application Support/Tempo/data.json`; `AppData` also persists `activeProjectId` and `sessionStart` for crash recovery
+- **Break project**: a built-in protected `Project` with `id = 00000000-0000-0000-0000-000000000001` and `isBreak = true`; seeded by `ensureBreakProject()` on every load. Guards in `deleteProject`, `renameProject`, `recolorProject` prevent mutation.
+- **Notification actions**: break reminders carry "Start Break" (`.foreground`) and "Dismiss" action buttons. Tapping "Start Break" calls `store.startBreak()`; tapping "Dismiss" calls `store.rescheduleBreakIfRunning()` via callbacks on `NotificationManager.shared`.
 
 ## Adding a new Swift source file
 
