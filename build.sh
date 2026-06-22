@@ -34,32 +34,50 @@ mkdir -p "$APP/Contents/MacOS"
 mkdir -p "$APP/Contents/Resources"
 mkdir -p "$MODULE_CACHE"
 
-# Compile all Swift sources
-"$SWIFTC" \
-    -module-cache-path "$MODULE_CACHE" \
-    -Xcc "-fmodules-cache-path=$MODULE_CACHE" \
-    -sdk "$SDK" \
-    -target x86_64-apple-macos13.0 \
-    -framework AppKit \
-    -framework SwiftUI \
-    -framework Charts \
-    -framework Combine \
-    -framework UserNotifications \
-    -O \
-    "$SRC/Models.swift" \
-    "$SRC/Formatters.swift" \
-    "$SRC/Settings.swift" \
-    "$SRC/NotificationManager.swift" \
-    "$SRC/Store.swift" \
-    "$SRC/InsightsView.swift" \
-    "$SRC/HistoryView.swift" \
-    "$SRC/ManageProjectsView.swift" \
-    "$SRC/SettingsView.swift" \
-    "$SRC/MainWindowView.swift" \
-    "$SRC/MenuBarController.swift" \
-    "$SRC/AppDelegate.swift" \
-    "$SRC/main.swift" \
-    -o "$APP/Contents/MacOS/Tempo"
+# Swift sources, in dependency order (dependencies before dependents)
+SOURCES=(
+    "$SRC/Models.swift"
+    "$SRC/Formatters.swift"
+    "$SRC/Settings.swift"
+    "$SRC/NotificationManager.swift"
+    "$SRC/Store.swift"
+    "$SRC/InsightsView.swift"
+    "$SRC/HistoryView.swift"
+    "$SRC/ManageProjectsView.swift"
+    "$SRC/SettingsView.swift"
+    "$SRC/MainWindowView.swift"
+    "$SRC/MenuBarController.swift"
+    "$SRC/AppDelegate.swift"
+    "$SRC/main.swift"
+)
+
+# Build a universal binary (arm64 + x86_64) so the same app runs natively on
+# both Apple Silicon and Intel Macs. Compile each architecture separately, then
+# stitch them together with lipo.
+ARCHES=(arm64 x86_64)
+SLICES=()
+for arch in "${ARCHES[@]}"; do
+    slice="$OUT_DIR/Tempo-$arch"
+    echo "Compiling $arch slice..."
+    "$SWIFTC" \
+        -module-cache-path "$MODULE_CACHE" \
+        -Xcc "-fmodules-cache-path=$MODULE_CACHE" \
+        -sdk "$SDK" \
+        -target "$arch-apple-macos13.0" \
+        -framework AppKit \
+        -framework SwiftUI \
+        -framework Charts \
+        -framework Combine \
+        -framework UserNotifications \
+        -O \
+        "${SOURCES[@]}" \
+        -o "$slice"
+    SLICES+=("$slice")
+done
+
+echo "Creating universal binary..."
+lipo -create "${SLICES[@]}" -output "$APP/Contents/MacOS/Tempo"
+rm -f "${SLICES[@]}"
 
 # Copy Info.plist and assets
 cp "$RESOURCES/Info.plist" "$APP/Contents/"
